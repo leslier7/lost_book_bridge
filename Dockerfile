@@ -1,4 +1,4 @@
-FROM osrf/ros:humble-desktop-jammy
+FROM docker.io/osrf/ros:humble-desktop-jammy
 
 RUN apt-get update && apt-get install -y python3-pip && rm -rf /var/lib/apt/lists/*
 
