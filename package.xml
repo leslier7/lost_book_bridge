@@ -3,7 +3,7 @@
   <name>lost_book_bridge</name>
   <version>0.0.1</version>
   <description>ZMQ bridge between ROS2 navigation and CV</description>
-  <maintainer email="robbie.w.leslie@gmail.com">Robbie Leslie</maintainer>
+  <maintainer email="rwl228@cornell.edu">Robbie Leslie</maintainer>
   <license>Apache-2.0</license>
 
   <exec_depend>rclpy</exec_depend>
