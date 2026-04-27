@@ -1,8 +1,7 @@
 import zmq
-import threading
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Int32
+from std_srvs.srv import Trigger
 
 CV_TIMEOUT_MS = 10_000
 
@@ -20,6 +19,9 @@ CV_TIMEOUT_MS = 10_000
 #   msg = pull.recv_string()        # blocks until bridge sends "stopped"
 #   ... process image ...
 #   push.send_string("ready")       # signal bridge to resume navigation
+#
+# Nav node calls the 'trigger_cv' service when it stops. The call blocks until
+# CV responds (or times out); response.success indicates whether to resume.
 
 
 class Bridge(Node):
@@ -27,29 +29,21 @@ class Bridge(Node):
         super().__init__('bridge')
         self._push = push
         self._pull = pull
-        self._nav_stopped = threading.Event()
+        self.create_service(Trigger, 'trigger_cv', self._trigger_cv_cb)
 
-        self.create_subscription(Int32, 'nav_status', self._nav_cb, 10)
-        self._cv_pub = self.create_publisher(Int32, 'cv_status', 10)
+    def _trigger_cv_cb(self, _request, response):
+        self._push.send_string("stopped")
 
-    def _nav_cb(self, msg):
-        if msg.data == 1:
-            self._nav_stopped.set()
+        if self._pull.poll(timeout=CV_TIMEOUT_MS):
+            self._pull.recv_string()
+            response.success = True
+            response.message = ''
+        else:
+            self.get_logger().error("CV did not respond within timeout")
+            response.success = False
+            response.message = 'CV timeout'
 
-    def run(self):
-        while rclpy.ok():
-            self._nav_stopped.wait()
-            self._nav_stopped.clear()
-
-            self._push.send_string("stopped")
-
-            if self._pull.poll(timeout=CV_TIMEOUT_MS):
-                self._pull.recv_string()
-                out = Int32()
-                out.data = 1
-                self._cv_pub.publish(out)
-            else:
-                self.get_logger().error("CV did not respond within timeout")
+        return response
 
 
 def main():
@@ -71,11 +65,8 @@ def main():
 
     node = Bridge(push, pull)
 
-    spin_thread = threading.Thread(target=rclpy.spin, args=(node,), daemon=True)
-    spin_thread.start()
-
     try:
-        node.run()
+        rclpy.spin(node)
     except KeyboardInterrupt:
         pass
     finally:
