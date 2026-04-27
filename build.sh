@@ -5,4 +5,4 @@ if ! docker image inspect docker.io/osrf/ros:humble-desktop-jammy > /dev/null 2>
   docker pull docker.io/osrf/ros:humble-desktop-jammy
 fi
 
-docker build -t my_ros2 .
+docker build -t localhost/my_ros2 .
